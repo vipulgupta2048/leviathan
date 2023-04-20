@@ -19,7 +19,7 @@ const yargs = require('yargs')
 	})
 	.option('w', {
 		alias: 'workdir',
-		description: 'working directory',
+		description: 'working leviathan.uploads directory',
 		type: 'string',
 		default: `${tmpdir()}/run`,
 	})
