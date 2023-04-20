@@ -47,6 +47,7 @@ const Context = require('./context');
 const State = require('./state');
 const { Setup, Teardown } = require('./taskQueue');
 const Test = require('./test');
+const { downloadImage } = require('./download-image')
 
 // Device identification
 function uid(a) {
@@ -173,6 +174,9 @@ module.exports = class Suite {
 		await Bluebird.try(async () => {
 			await this.setup.runAll();
 			await this.installDependencies();
+			console.log(this.options.image)
+			await downloadImage(this.options.image)
+			await this.downloadOS();
 			this.rootTree = this.resolveTestTree(
 				path.join(this.suitePath, 'suite'),
 			);
