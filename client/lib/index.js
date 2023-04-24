@@ -17,6 +17,7 @@ const tarStream = require('tar-stream');
 const { parse } = require('url');
 const WebSocket = require('ws');
 const zlib = require('zlib');
+const {isURL} = require('validator')
 
 async function isGzip(filePath) {
 	const buf = Buffer.alloc(3);
@@ -323,7 +324,7 @@ module.exports = class Client extends PassThrough {
 								case 'image':
 									// [Hack] Upload a fake image if image is false
 									// Remove when https://github.com/balena-os/leviathan/issues/567 is resolved
-									if (suiteConfig.image === false) {
+									if (suiteConfig.image === false || isURL(suiteConfig.image)) {
 										// Had to create fake image in home directory otherwise
 										// facing a permission issue since client root is read-only
 										const fakeImagePath = '/home/test-balena.img.gz';
@@ -332,6 +333,7 @@ module.exports = class Client extends PassThrough {
 										artifact.type = 'isFile';
 										break;
 									}
+
 									artifact.path = makePath(suiteConfig.image);
 									artifact.type = 'isFile';
 									break;

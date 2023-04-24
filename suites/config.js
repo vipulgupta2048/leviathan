@@ -9,7 +9,8 @@ module.exports = [{
     balenaApiUrl: 'balena-cloud.com',
     organization: process.env.BALENACLOUD_ORG
   },
-  image: false,
+  image: process.env.JENKINS_IMAGE_URL,
+  // image: `https://api.balena-cloud.com/download?deviceType=generic-amd64&version=2.113.12&fileType=.zip&developmentMode=true`,
   debug: {
     unstable: ["Kill the device under test"],
   },

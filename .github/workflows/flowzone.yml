@@ -1,31 +1,23 @@
 name: Flowzone
 
 on:
+  repository_dispatch:
+    types: [testing]
   pull_request:
     types: [opened, synchronize, closed]
-    branches: [main, master]
-  # allow external contributions to use secrets within trusted code
+    branches:
+      - "main"
+      - "master"
+      - '[0-9]+.[0-9]+.x'
   pull_request_target:
     types: [opened, synchronize, closed]
-    branches: [main, master]
+    branches:
+      - "main"
+      - "master"
+      - '[0-9]+.[0-9]+.x'
 
 jobs:
-  flowzone:
-    name: Flowzone
-    uses: product-os/flowzone/.github/workflows/flowzone.yml@master
-    # prevent duplicate workflows and only allow one `pull_request` or `pull_request_target` for
-    # internal or external contributions respectively
-    if: |
-      (github.event.pull_request.head.repo.full_name == github.repository && github.event_name == 'pull_request') ||
-      (github.event.pull_request.head.repo.full_name != github.repository && github.event_name == 'pull_request_target')
-    secrets: inherit
-
-  e2e:
-    needs: [flowzone]
-    if: |
-      ((github.event.pull_request.head.repo.full_name == github.repository && github.event_name == 'pull_request') ||
-      (github.event.pull_request.head.repo.full_name != github.repository && github.event_name == 'pull_request_target')) &&
-      github.event.action != 'closed'
+  balenaOS-tests:
     runs-on: ubuntu-22.04
 
     env:
@@ -39,10 +31,11 @@ jobs:
       QEMU_MEMORY: 1G
       WORKER_TYPE: ${{ matrix.WORKER_TYPE }}
       DEVICE_TYPE: ${{ matrix.DEVICE_TYPE }}
+      JENKINS_IMAGE_URL: ${{ github.event.client_payload.image_url }}
 
     defaults:
       run:
-        working-directory: .
+        working-directory: ./tests/
         shell: bash --noprofile --norc -eo pipefail -x {0}
 
     strategy:
@@ -55,8 +48,6 @@ jobs:
             WORKER_TYPE: qemu
           - DEVICE_TYPE: generic-aarch64
             WORKER_TYPE: qemu
-          - DEVICE_TYPE: raspberrypi3
-            WORKER_TYPE: testbot
 
     steps:
       - uses: actions/checkout@v3
@@ -79,3 +70,4 @@ jobs:
         with:
           name: reports-${{ env.WORKER_TYPE }}-${{ env.DEVICE_TYPE }}
           path: ${{ env.REPORTS }}
+
