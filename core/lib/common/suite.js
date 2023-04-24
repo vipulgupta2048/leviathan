@@ -174,9 +174,7 @@ module.exports = class Suite {
 		await Bluebird.try(async () => {
 			await this.setup.runAll();
 			await this.installDependencies();
-			console.log(this.options.image)
 			await downloadImage(this.options.image)
-			await this.downloadOS();
 			this.rootTree = this.resolveTestTree(
 				path.join(this.suitePath, 'suite'),
 			);

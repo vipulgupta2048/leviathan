@@ -11,3 +11,8 @@ module.exports = {
     }
   }
 };
+
+curl --request POST \
+  --url 'https://api.github.com/repos/vipulgupta2048/leviathan/dispatches' \
+  --header 'authorization: token $GITHUB_TOKEN' \
+  --data '{"leviathan_genericx86-ext": ""}'

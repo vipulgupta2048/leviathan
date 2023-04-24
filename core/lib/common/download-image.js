@@ -1,25 +1,22 @@
 const fs = require('fs');
-const fsp = require('fs/promises');
 const config = require('../config')
-const { extname, join } = require('path')
-// const extract = require('extract-zip')
 const unzipper = require('unzipper')
 const { createGzip } = require('zlib')
 const { Stream } = require('stream')
 const util = require('util')
 const request = require('request')
 const progress = require('request-progress');
-const path = require('path')
+const { resolve } = require('any-promise');
 
 const pipeline = util.promisify(Stream.pipeline);
-const downloadPath = `${config.leviathan.downloads}/`  // Place to download and keep extracted files
+
+const downloadPath = `${config.leviathan.downloads}/`  // Location for downloaded files
 const downloadFileName = "os.img"  // Temporary name for downloaded file
-const file = fs.createWriteStream(downloadPath + downloadFileName)
+const downloadFile = downloadPath + downloadFileName
+const file = fs.createWriteStream(downloadFile)
 
 class Host {
   async fetchImage() {
-
-    // const protocol = this.adapter[url.protocol]
     return new Promise((resolve, reject) => {
       let downloadProgress = 0;
 
@@ -27,6 +24,7 @@ class Host {
         .get(this.options))
         .on("response", (response) => {
           console.log(`Received ${response.statusCode} response from ${response.request.uri.hostname} downloading to ${downloadPath}`)
+          response.pipe(file)
         })
         .on("end", () => {
           console.log("Download Completed");
@@ -43,10 +41,9 @@ class Host {
         })
         .on('error', async (err) => {
           file.close()
-          await fs.promises.unlink(downloadPath + downloadFileName);
+          await fs.promises.unlink(downloadFile);
           reject(err)
         })
-        .pipe(file)
     });
   }
 }
@@ -99,32 +96,37 @@ async function isZip(filepath) {
 }
 
 
-async function decompress(downloadedFile) {
-  if (await isZip(downloadedFile)) {
-    // await extract(downloadedFile, { dir: config.leviathan.workdir })
-    fs.createReadStream(downloadedFile)
-      .pipe(unzipper.Parse())
-      .on('entry', async (entry) => {
-        const fileName = entry.path;
-        const type = entry.type; // 'Directory' or 'File'
-        if (type === 'File') {
-          console.log(`Unzipping ${fileName}`)
-          entry.pipe(fs.createWriteStream(config.leviathan.uploads.image));
-          await fs.promises.unlink(downloadedFile)
-        }
-      });
-  } else if (await isGzip(downloadedFile)) {
-    console.log("Decompressing Gzip file")
-    await pipeline(
-      fs.createReadStream(downloadedFile),
-      zlib.createGzip({ level: 6 }),
-      fs.createWriteStream(config.leviathan.uploads.image)
-    )
-    await fs.promises.unlink(downloadPath + downloadFileName)
-  } else {
-    await fs.promises.rename(downloadedFile, config.leviathan.uploads.image) // Moving the file
-    console.log("No decompression needed")
-  }
+async function decompress() {
+  return new Promise(async (resolve, reject) => {
+    if (await isZip(downloadFile)) {
+      fs.createReadStream(downloadFile)
+        .pipe(unzipper.Parse())
+        .on('entry', async (entry) => {
+          const fileName = entry.path;
+          const type = entry.type; // 'Directory' or 'File'
+          console.log(entry)
+          if (type === 'File') {
+            console.log(`Unzipping ${fileName} --> ${config.leviathan.uploads.image}`)
+            entry.pipe(fs.createWriteStream(config.leviathan.uploads.image));
+            await fs.promises.unlink(downloadFile)
+            resolve()
+          }
+        });
+    } else if (await isGzip(downloadFile)) {
+      console.log("Unzipping Gzip file")
+      await pipeline(
+        fs.createReadStream(downloadFile),
+        zlib.createGzip({ level: 6 }),
+        fs.createWriteStream(config.leviathan.uploads.image)
+      )
+      await fs.promises.unlink(downloadFile)
+      resolve()
+    } else {
+      await fs.promises.rename(downloadFile, config.leviathan.uploads.image) // Moving the file
+      console.log("No decompression needed")
+      resolve()
+    }
+  })
 }
 
 
@@ -133,16 +135,20 @@ async function decompress(downloadedFile) {
  * Function to download OS images
  * @param imageURL - string defining the target URL of the image
  */
-module.exports = async function downloadImage(imageUrl) {
-  const parsedUrl = (new URL(imageUrl)); // parse the URL
-  const ImageHost = downloadSource(parsedUrl) // Check the host from where the image will be downloaded, add in credentials
-  await ImageHost.fetchImage() // Download the host using those options 
-  await decompress(downloadPath + downloadFileName)  // Decompress the downloaded file
-};
+module.exports = {
+  downloadImage: async (imageUrl) => {
+    // return new Promise(resolve, async () => {
+    const parsedUrl = (new URL(imageUrl)); // parse the URL
+    const ImageHost = downloadSource(parsedUrl) // Check the host from where the image will be downloaded, add in credentials
+    await ImageHost.fetchImage()
+    await decompress()
+    console.log("Decompression completed")
+  }
+}
 
 
 // (async () => {
-  // Test Files
-  // await downloadImage('https://speed.hetzner.de/100MB.bin')
-  // await downloadImage('https://sample-videos.com/zip/30mb.zip')
+//   // Test Files
+//   // await downloadImage('https://speed.hetzner.de/10s0MB.bin')
+//   await downloadImage('https://sample-videos.com/zip/30mb.zip')
 // })();
