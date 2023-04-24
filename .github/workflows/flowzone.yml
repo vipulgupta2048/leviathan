@@ -31,6 +31,7 @@ jobs:
       QEMU_MEMORY: 1G
       WORKER_TYPE: ${{ matrix.WORKER_TYPE }}
       DEVICE_TYPE: ${{ matrix.DEVICE_TYPE }}
+      JENKINS_IMAGE_URL: ${{ github.event.client_payload.image_url }}
 
     defaults:
       run:
