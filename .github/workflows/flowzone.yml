@@ -2,7 +2,7 @@ name: Flowzone
 
 on:
   repository_dispatch:
-    types: [lets-go-testing]
+    types: [testing]
   pull_request:
     types: [opened, synchronize, closed]
     branches:
